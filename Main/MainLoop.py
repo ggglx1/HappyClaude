@@ -4,6 +4,7 @@ import copy
 from pathlib import Path
 
 from AgentTeams import AgentTeams
+from AgentRuntime import AgentRuntime
 from BackgroundTasks import BackgroundTasks
 from ContextCompact import ContextCompactor
 from CronScheduler import CronScheduler
@@ -42,6 +43,7 @@ task_system = TaskSystem(WORKDIR)
 worktree_manager = WorktreeManager(WORKDIR, task_system)
 background_tasks = BackgroundTasks()
 cron_scheduler = CronScheduler(WORKDIR)
+runtime = None
 
 
 def teammate_tools_factory(name: str) -> Tools:
@@ -389,12 +391,18 @@ def print_final_text(message_content) -> None:
             print(block.text)
 
 
+def get_runtime() -> AgentRuntime:
+    global runtime
+    if runtime is None:
+        runtime = AgentRuntime(WORKDIR, agent_loop, extract_text)
+    return runtime
+
+
 if __name__ == "__main__":
     print("HappyClaude: Agent Loop")
     print(f"Model: {get_settings().model}")
     print("Type a task and press Enter. Type q to quit.\n")
 
-    history = []
     while True:
         try:
             query = input("S01 >> ")
@@ -406,7 +414,9 @@ if __name__ == "__main__":
             break
 
         hooks.trigger("UserPromptSubmit", query)
-        history.append({"role": "user", "content": query})
-        agent_loop(history)
-        print_final_text(history[-1]["content"])
+        result = get_runtime().run("cli", query)
+        if result.output:
+            print(result.output)
+        elif result.error:
+            print(result.error)
         print()

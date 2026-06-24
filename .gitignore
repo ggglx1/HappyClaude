@@ -17,4 +17,5 @@ htmlcov/
 .tasks/
 .mailboxes/
 .worktrees/
+.runtime/
 .scheduled_tasks.json

@@ -17,8 +17,6 @@ sys.path.insert(0, str(MAIN_DIR))
 
 import MainLoop  # noqa: E402
 
-
-history = []
 write_lock = threading.Lock()
 permission_replies: dict[str, "queue.Queue[bool]"] = {}
 permission_counter = 0
@@ -94,16 +92,16 @@ def patch_permissions() -> None:
 
 def run_agent(content: str) -> None:
     emit({"type": "status", "status": "busy"})
-    history.append({"role": "user", "content": content})
     capture = Capture("log")
     try:
         with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
             MainLoop.hooks.trigger("UserPromptSubmit", content)
-            MainLoop.agent_loop(history)
+            result = MainLoop.get_runtime().run("web", content)
         capture.flush()
-        final = extract_text(history[-1].get("content", "")) if history else ""
-        if final:
-            emit({"type": "output", "role": "assistant", "content": final})
+        if result.output:
+            emit({"type": "output", "role": "assistant", "content": result.output})
+        elif result.error:
+            emit({"type": "output", "role": "error", "content": result.error})
     except Exception:
         capture.flush()
         emit({"type": "output", "role": "error", "content": traceback.format_exc()})
